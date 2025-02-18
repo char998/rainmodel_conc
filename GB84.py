@@ -55,7 +55,7 @@ epsilon_1 = 1.65e-3  # unitless
 epsilon_2 = 5e4  # (kg/(m/s²))
 epsilon_3 = 1  # (s/m)
 epsilon_4 = 5.5e-5  # (m)
-gamma = 2  # unitless
+gamma = 1  # unitless
 beta = 1  # unitless
 m = 0  # unitless
 delta = 1/3*(1/gamma + 1/gamma**2 + 1/gamma**3)
@@ -125,7 +125,7 @@ def cloud_heights(T_s,T_t,T_0,p_s,p_t,p_0):
 
 def non_dim_numbers(v):
     
-    V_p = 4*alpha**epsilon_4*v**m
+    V_p = 4*alpha*epsilon_4*v**m
     N_v = beta*v**(1-m)/(alpha*epsilon_4)
     
     return V_p,N_v
