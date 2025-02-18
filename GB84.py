@@ -56,7 +56,7 @@ epsilon_2 = 5e4  # (kg/(m/s²))
 epsilon_3 = 1  # (s/m)
 epsilon_4 = 5.5e-5  # (m)
 gamma = 1  # unitless
-beta = 1  # unitless
+beta = 0.5  # unitless
 m = 0  # unitless
 delta = 1/3*(1/gamma + 1/gamma**2 + 1/gamma**3)
 
@@ -172,7 +172,10 @@ class variables:
             f1 = Eq(p_t, p_l + (epsilon_2 - p_l) / (1 + epsilon_3 * epsilon_1 *sqrt(Max(1e-7,c_p * (T_m - T_0 / (p_0/(3/4 * p_s + 1/4 * p_t))**0.286)))))
 
             f2 = Eq(Theta_e,T_m * (p_n / (3/4 * p_s + 1/4 * p_t))**0.286 * exp((A - B * (T_m - 273.15)) #replaced L(T) with the whole expression for fsolve
-                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m))) # whole expression here instead of p'
+                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m))
+                                
+                                
+                                ) # whole expression here instead of p'
 
             # Convert the symbolic equations to numerical functions using lambdify
             f1_func = lambdify((p_t, T_m), f1.lhs - f1.rhs, 'numpy')
@@ -229,7 +232,7 @@ class h_out:
     #cloud top outflow 
     def O_t(self):
         return(1 + 3/4*(gamma*self.N_v) + (gamma*self.N_v)**2/4 + (gamma*self.N_v)**3/24)\
-                                        /np.exp(gamma**5*self.N_v**(gamma*self.N_v)) + self.N_v/(4*gamma**4) + 1/gamma**5
+                                        /(gamma**5*np.exp(gamma*self.N_v)) + self.N_v/(4*gamma**4) + 1/gamma**5
 
     #total outflow
     def h_v(self):
