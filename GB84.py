@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
+##The code for the authentic GB84 model
 
 # In[58]:
 
@@ -12,19 +11,9 @@ from sympy import exp, sqrt, Max
 import matplotlib.pyplot as plt
 from kalman_filter import kalman_filter as kf
 
+# Constants (taken from A Generalized Stochastic Hydrometeorological Model 
+#for Flood and Flash-Flood Forecasting, Georgakakos 1986)
 
-# In[59]:
-
-
-# %% 
-
-
-# #### Constants and Parameters
-
-# In[60]:
-
-
-# Constants
 epsilon = 0.622  # unitless
 A = 2.5e6  # (J/kg)
 B = 2.38e3  # (J/(kg K))
@@ -32,12 +21,12 @@ A_1 = 8e-4  # (kg/(m·s²·K^3.5))
 A_2 = 2.11e-5  # (m²/s) 
 T_star = 273.15  # (K)
 p_star = 101325  # (kg/(m·s²))
-p_n = 1e5  # (kg/(m·s²))
+p_n = 1e5  # nominal pressure - (kg/(m·s²))
 g = 9.80  # (m/s²)
 R = 287  # (J/(kg·K))
 R_v = 461  # (J/(kg·K))
 c_p = 1004  # (J/(kg·K))
-p_l = 2e4  # (kg/(m·s²))
+p_l = 2e4  # lowest possible cloud top pressure - (kg/(m·s²))
 alpha_rain = 3500  # (1/s) for rain
 alpha_snow = 1500  # (1/s) for snow
 c1_rain = 7e5  # (kg/(m³·s)) for rain
@@ -51,12 +40,12 @@ alpha = alpha_rain
 
 
 # storm invariant parameters from Georgakakos 1986
-epsilon_1 = 1.65e-3  # unitless
-epsilon_2 = 5e4  # (kg/(m/s²))
+epsilon_1 = 1.65e-3*10  # unitless
+epsilon_2 = 5e4  # highest possible cloud top pressure - (kg/(m/s²))
 epsilon_3 = 1  # (s/m)
-epsilon_4 = 5.5e-5  # (m)
+epsilon_4 = 5.5e-5  # nominal hydrometeor diameter - (m)
 gamma = 1  # unitless
-beta = 0.5  # unitless
+beta = 0.1  # unitless
 m = 0  # unitless
 delta = 1/3*(1/gamma + 1/gamma**2 + 1/gamma**3)
 
@@ -67,7 +56,7 @@ delta = 1/3*(1/gamma + 1/gamma**2 + 1/gamma**3)
 
 
 def w(T,P):
-    #mixing ratio
+    #saturation mixing ratio
     return epsilon*A_1*(T - 223.15)**3.5/P
 
 def L(T):
@@ -84,7 +73,7 @@ def e_s(T):
 
 def v(T_m,T_s_up):
     #average updraft velocity
-    v = epsilon_1*np.sqrt(c_p*(T_m - T_s_up))
+    v = epsilon_1*np.sqrt(c_p*max(0,(T_m - T_s_up)))
     return v
 
 def rho_m(T_s,T_t,p_s,p_t):
@@ -97,8 +86,8 @@ def rho_m(T_s,T_t,p_s,p_t):
 
 
 def f(T_d,p_0,p_t,T_t,rho,v):
-
-    #specific humidity in the ground and cloud base
+    # from Georgakakos 1984a - moisture input flux equation
+    #specific humidity (mixing ratio) in the ground and cloud base
     w_0 = w(T_d,p_0)
     w_s = w(T_t,p_t)
 
@@ -146,7 +135,7 @@ class variables:
         self.Theta_e = self.calculate_Theta_e(self.T_s,self.p_s)
         
     def calculate_cloud_base(self):
-        # cloud base pressure, temperature and specific humidity
+        # cloud base pressure, temperature
         p_s = (1/((self.T_0 - self.T_d)/223.15 + 1))**3.5 * self.p_0
         T_s = (1/((self.T_0 - self.T_d)/223.15 + 1))* self.T_0
         return p_s, T_s
@@ -167,15 +156,14 @@ class variables:
             T_m = Symbol('T_m')
             T_t = Symbol('T_t')
 
-
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # solve the two equation system for T_m and p_t
-            f1 = Eq(p_t, p_l + (epsilon_2 - p_l) / (1 + epsilon_3 * epsilon_1 *sqrt(Max(1e-7,c_p * (T_m - T_0 / (p_0/(3/4 * p_s + 1/4 * p_t))**0.286)))))
 
+            #  equation for parametrization of cloud top pressure with v_updr and constants
+            f1 = Eq(p_t, p_l + (epsilon_2 - p_l) / (1 + epsilon_3 * epsilon_1 *sqrt(Max(1e-7,c_p * (T_m - T_0 / (p_0/(3/4 * p_s + 1/4 * p_t))**0.286)))))
+            # equation for solving Theta_e for T_m
             f2 = Eq(Theta_e,T_m * (p_n / (3/4 * p_s + 1/4 * p_t))**0.286 * exp((A - B * (T_m - 273.15)) #replaced L(T) with the whole expression for fsolve
-                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m))
-                                
-                                
-                                ) # whole expression here instead of p'
+                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m)) ) 
 
             # Convert the symbolic equations to numerical functions using lambdify
             f1_func = lambdify((p_t, T_m), f1.lhs - f1.rhs, 'numpy')
@@ -196,7 +184,7 @@ class variables:
 
             # Extract solution
             p_t, T_m = solution.x
-
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # solve the non-linear equation for T_t
             f3 = Eq(Theta_e,T_t * (p_n / p_t)**0.286 * exp((A - B * (T_t - 273.15)) * (epsilon*A_1*abs(T_t - 223.15)**3.5/(p_t)) / (c_p * T_t)))
             f3_func = lambdify(T_t, f3.lhs - f3.rhs, 'numpy')
@@ -215,9 +203,82 @@ class variables:
 
 
 # In[68]:
+class variables_2:
+    ## alteration of the original class, for directly calculating p_t when having already calculated v_updr
+    def __init__(self, T_0, T_d, p_0,v_updr, obs):
+        self.T_0 = T_0
+        self.T_d = T_d
+        self.p_0 = p_0
+        self.obs = obs
+        self.v_updr = v_updr    
+        self.p_s, self.T_s = self.calculate_cloud_base(T_0, T_d, p_0)
+        self.Theta_e = self.calculate_Theta_e(self.T_s,self.p_s)
+        
+    @staticmethod
+    def calculate_cloud_base(T_0, T_d, p_0):
+        # cloud base pressure, temperature and specific humidity
+        p_s = (1/((T_0 - T_d)/223.15 + 1))**3.5 *p_0
+        T_s = (1/((T_0 - T_d)/223.15 + 1))* T_0
+        return p_s, T_s
+    
 
+    def calculate_Theta_e(self, T_s, p_s):
+        # equivalent potential temperature inside the cloud
+        Theta_e = T_s*(p_n/p_s)**0.286*np.exp(L(T_s)*w(T_s,p_s)/(c_p*T_s))
+        return Theta_e
+#--------------------------------------------------------------------------------------------------------------------------
+    def calculate_cloud_top(self,T_0,p_0,p_s,Theta_e,v_updr):
+        if self.obs:
+            #if they are available from observations, obs=True
+            T_t = T_t
+            p_t = p_t
+        else:
+            #p_t = Symbol('p_t')
+            p_t = p_l + (epsilon_2 - p_l) / (1 + epsilon_3 * epsilon_1 *v_updr)
+            T_m = Symbol('T_m')
+            T_t = Symbol('T_t')
+
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # solve only for T_m 
+           
+            f2 = Eq(Theta_e,T_m * (p_n / (3/4 * p_s + 1/4 * p_t))**0.286 * exp((A - B * (T_m - 273.15)) #replaced L(T) with the whole expression for fsolve
+                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m))
+                                
+                                
+                                ) # whole expression here instead of p'
+
+            # Convert the symbolic equations to numerical functions using lambdify
+            f2_func = lambdify(T_m, f2.lhs - f2.rhs, 'numpy')
+
+            # Set your initial guesses
+            initial_guesses = [270]  
+            bounds_lower = [223.15]
+            bounds_upper = [350]
+            # Solve the system using fsolve
+            solution = least_squares(f2_func, initial_guesses, bounds=(bounds_lower, bounds_upper))
+
+            # Extract solution
+            T_m = solution.x
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # solve the non-linear equation for T_t
+            f3 = Eq(Theta_e,T_t * (p_n / p_t)**0.286 * exp((A - B * (T_t - 273.15)) * (epsilon*A_1*abs(T_t - 223.15)**3.5/(p_t)) / (c_p * T_t)))
+            f3_func = lambdify(T_t, f3.lhs - f3.rhs, 'numpy')
+            T_t = fsolve(f3_func, 240)
+
+            # find the ambient air temperature and pressure
+            p_s_up = 3/4 * p_s + 1/4 * p_t  #p_s'
+            T_s_up = T_0 / (p_0/(p_s_up))**0.286 #T_s'
+
+        return p_t, T_m, T_t,T_s_up, p_s_up
+#--------------------------------------------------------------------------------------------------------------------------
+    def run(self):
+        p_s,T_s = self.p_s,self.T_s
+        p_t, T_m, T_t,T_s_up, p_s_up = self.calculate_cloud_top(self.T_0,self.p_0,self.p_s,self.Theta_e,self.v_updr)
+        return p_s,T_s,p_t, T_m, T_t,T_s_up, p_s_up
 
 class h_out:
+    # from Georgakakos 1984a - moisture output flux equation
     def __init__(self,v,Z_c):
         self.V_p = non_dim_numbers(v)[0]
         self.N_v = non_dim_numbers(v)[1]
@@ -246,7 +307,7 @@ class h_out:
 
 
 class phi:
-     
+     #state translation to precipitation equation Φ
      def __init__(self, T_0, p_0, T_d, Z_b, Z_c,v):
         self.T_0 = T_0
         self.p_0 = p_0
@@ -260,9 +321,11 @@ class phi:
         self.T_w = self.solve_Tw()
 
      def equation_Tw(self, T):
+        #wet bulb temperature
          return T + L(self.T_0)/c_p*(epsilon*A_1*(T - 223.15)**3.5/self.p_0 - w(self.T_d,self.p_0)) - self.T_0
      
      def solve_Tw(self):
+        #numerical solution of wet bulb temperature
          T_w_initial = 290
          return fsolve(self.equation_Tw, T_w_initial)
      
@@ -275,7 +338,7 @@ class phi:
         #critical diameter for evaporation
         D_c = (1/C_1*4*D_AB/R_v*self.Z_b*(e_s(self.T_w)/self.T_w - e_s(self.T_d)/self.T_0))**(1/3)
 
-        #
+        # non-dimensional number indicative of diffusional (evaporation) losses of droplets
         N_D = D_c/(epsilon_4*self.v**m)
 
         #calculating phi
