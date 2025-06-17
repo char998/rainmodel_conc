@@ -21,7 +21,6 @@ def w_parcel(p,T_v_moist,T_v_env,lfc_index,p_t,top_index):
     if top_index>1 and top_index>int(lfc_index):
     #implementation of the CAPE equation and integration
         delta_ln_p = -np.diff(np.log(p[int(lfc_index):top_index+1]))
-        print(delta_ln_p)
         buoyancy = R_dry * (T_v_moist - T_v_env)[int(lfc_index):top_index]
         CAPE = np.sum(buoyancy * delta_ln_p)
         w_parcel_max = np.sqrt(2 * CAPE)
@@ -47,7 +46,7 @@ def w_profile(w_parcel_max,Z,lfc_index,top_index):
         """
 
         mid_index = int((lfc_index+top_index)/2)
-        #print(mid_index,lfc_index,top_index)
+
         w_profile = np.zeros(top_index-lfc_index +1)
         
         w_profile[0:mid_index-lfc_index] = w_parcel_max*(Z[lfc_index:mid_index]-Z[lfc_index])/(Z[mid_index]-Z[lfc_index]) 

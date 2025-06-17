@@ -42,22 +42,17 @@ def Temp_prof(T_surf,p_surf,T_d,p_air):
     """
 
     p_n = p_air[0]
-    print(p_n)
+    
     p_s = (1/((T_surf - T_d)/223.15 + 1))**3.5 * p_surf #pressure at the LCL
-    #print(p_s)
     T_s = (1/((T_surf - T_d)/223.15 + 1))* T_surf       #Temperature at the LCL
-    #print(T_s)
 
     theta_moist_parcel = T_s*(p_n/p_s)**0.286*np.exp(L(T_s)*w_sat(T_s,p_s)/(c_p*T_s))    #equivalent potential temperature inside the cloud (irreversible process)
     theta_dry = T_surf*(p_n/p_surf)**0.286               #equivalent potential temperature outside the cloud
-    #print(theta_moist_parcel)
 
     #find where the LCL is located
     lcl_index = (np.abs(p_air - p_s)).argmin()
 
-
     T_arr = theta_dry*(p_air/p_n)**0.286*np.ones(len(p_air)) #dry adiabatic lapse rate temperature to use for initialization of the numerical solution
-    #T_arr[lcl_index] = T_s
 
     for i in range(lcl_index,len(p_air)):
         #solve numerically the equivalent potential temperature equation to get the parcel temperature a each height
@@ -66,7 +61,6 @@ def Temp_prof(T_surf,p_surf,T_d,p_air):
         T_solve = lambdify(T_parcel, T_func.lhs - T_func.rhs, 'numpy')  #sympy equation
         T_parcel = fsolve(T_solve, T_arr[i-1])      #numerical solution (equation, initial guess)
         T_arr[i] = T_parcel     #parcel temperature at height with p_air[i]
-        #print(T_parcel)
 
     return T_arr,lcl_index,p_s,T_s
 

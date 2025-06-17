@@ -48,10 +48,12 @@ def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
     #finding the characteristic heights
     Z_t = Z[top_index]
     D_cloud = Dc_func(X,Z_t-Z_b)
-    Z_mid = (Z_t + Z[lfc_index])/2
-    Z_lim = ((Z_mid - Z_t)*(v_t(D_cloud)*dt + Z_t))/(w_parcel_max*dt + Z_mid - Z_t)
-    Z_min = (v_t(D_cloud)*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]
-    Z_max = (v_t(D_cloud)*(Z_mid - Z_t)/w_parcel_max) + Z_t
+
+    if w_parcel_max>0:
+        Z_mid = (Z_t + Z[lfc_index])/2
+        Z_lim = ((Z_mid - Z_t)*(v_t(D_cloud)*dt + Z_t))/(w_parcel_max*dt + Z_mid - Z_t)
+        Z_min = (v_t(D_cloud)*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]
+        Z_max = (v_t(D_cloud)*(Z_mid - Z_t)/w_parcel_max) + Z_t
 
     if Z_t <= Z_b or X == 0 or w_parcel_max<alpha*D_cloud:
             return 0

@@ -46,7 +46,6 @@ def insert_lcl_values(temp_parcel,p,Z,lcl_index,T_s_value,p_s_value,my_temp,q_v)
         # Also insert the same ambient‐air values at that index
         my_t_lcl = my_temp[lcl_index]
         qv_lcl   = q_v[lcl_index]
-        #temp_qv  = q_v[lcl_index]  # or recompute via specific_humidity_from_rh if needed
 
         my_temp = np.insert(my_temp, insert_idx, my_t_lcl)
         q_v     = np.insert(q_v, insert_idx, qv_lcl)
@@ -72,17 +71,14 @@ def insert_lcl_values(temp_parcel,p,Z,lcl_index,T_s_value,p_s_value,my_temp,q_v)
             (my_temp[lcl_index +1] - my_temp[lcl_index-1]) /
                 (p[lcl_index +1] - p[lcl_index-1])
                     ) * (p_s_value - p[lcl_index-1])
-        print(my_temp[lcl_index+1])
-        #print(my_temp_lcl)
+
 # Linear interpolation of q_v at the LCL
-        print(q_v[lcl_index + 1] - q_v[lcl_index-1])
         qv_lcl = q_v[lcl_index-1] + (
             (q_v[lcl_index + 1] - q_v[lcl_index-1]) /
             (p[lcl_index + 1] - p[lcl_index-1])
         ) * (p_s_value - p[lcl_index-1])
         
         my_temp = np.insert(my_temp,lcl_index,my_temp_lcl.item())   #insert the ambient air LCL height temperature
-        #qv_lcl = specific_humidity_from_rh(my_temp[lcl_index], RH_lcl, p_s_value)
         q_v = np.insert(q_v,lcl_index,qv_lcl.item())
         return temp_parcel, p, Z, lcl_index, my_temp, q_v
         #-----------------------------------------------------------------------------------------------------------------------------------------------
@@ -104,18 +100,15 @@ def insert_lcl_values(temp_parcel,p,Z,lcl_index,T_s_value,p_s_value,my_temp,q_v)
             (my_temp[lcl_index +1] - my_temp[lcl_index-1]) /
                 (p[lcl_index +1] - p[lcl_index-1])
                     ) * (p_s_value - p[lcl_index-1])
-        print(my_temp[lcl_index+1])
-        print(my_temp_lcl)
+
 # Linear interpolation of q_v at the LCL
         
         qv_lcl = q_v[lcl_index-1] + (
             (q_v[lcl_index + 1] - q_v[lcl_index-1]) /
             (p[lcl_index + 1] - p[lcl_index-1])
         ) * (p_s_value - p[lcl_index-1])
-        print(qv_lcl)
+
         my_temp = np.insert(my_temp,lcl_index,my_temp_lcl.item())
-        #print(my_temp[lcl_index])
-        #qv_lcl = specific_humidity_from_rh(my_temp[lcl_index], RH_lcl, p_s_value)
+
         q_v = np.insert(q_v,lcl_index,qv_lcl.item())
-        #print(q_v)
         return temp_parcel, p, Z, lcl_index, my_temp, q_v
