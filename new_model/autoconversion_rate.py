@@ -1,4 +1,4 @@
-from constants import c_p,T_star,p_star,R_v, A_2,C_1
+from constants import cpd,T_star,p_star,R_v, A_2,C_1
 from physics_equations import e_s,L,w_sat
 from scipy.optimize import fsolve
 
@@ -53,7 +53,7 @@ class critical_diameter:
          """
          Wet bulb temperature T [K] equation (from Georgakakos 1986)
          """
-         return T + L(self.T_0)/c_p*(e_s(T)/self.p_0 - w_sat(self.T_d,self.p_0)) - self.T_0
+         return T + L(self.T_0)/cpd*(e_s(T)/self.p_0 - w_sat(self.T_d,self.p_0)) - self.T_0
      
     def solve_Tw(self):
          """

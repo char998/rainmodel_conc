@@ -1,6 +1,6 @@
 import numpy as np
-from constants import A,B,c_p,g,R_dry
-from physics_equations import w_sat,specific_humidity_from_rh, w_sat_symbolic,L
+from constants import A,B,cpd,g,R_dry
+from physics_equations import w_sat,specific_humidity_from_rh, w_sat_symbolic,L,theta_e,theta_e_reversible,theta_l
 from sympy import Symbol, Eq,exp, lambdify
 from scipy.optimize import fsolve
 
@@ -22,7 +22,7 @@ def met_profiles(T_surf,p_surf,p_t):
     T_air = T_surf*(p_air/p_surf)**0.286
     return p_air, T_air
     
-def Temp_prof(T_surf,p_surf,T_d,p_air):
+def Temp_prof(T_surf,p_surf,T_d,p_air,theta_type):
     """
     function to calculate the temperature profile of the parcel given the pressure levels
     and using the irreversible process equivalent potential temperature
@@ -32,7 +32,12 @@ def Temp_prof(T_surf,p_surf,T_d,p_air):
         T_d: dew point temperature in the surface  [K]
         p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
-        T_arr: temperature profile                [K]
+        theta_type: choose which approach to follow for 
+                    the conserved potential temperature: 
+                                                       - theta_e: pseudo-adiabatic equivalent potential temperature
+                                                       - theta_e_reversible: reversible equivalent potential temperature
+                                                       - theta_l: liquid water potential temperature
+                                                       - GB84: pseudo-adiabatic equivalent potential temperature from Georgakakos and Bras 1984
 
     Returns:
         T_arr: moist parcel temperature profile   [K]
@@ -46,7 +51,8 @@ def Temp_prof(T_surf,p_surf,T_d,p_air):
     p_s = (1/((T_surf - T_d)/223.15 + 1))**3.5 * p_surf #pressure at the LCL
     T_s = (1/((T_surf - T_d)/223.15 + 1))* T_surf       #Temperature at the LCL
 
-    theta_moist_parcel = T_s*(p_n/p_s)**0.286*np.exp(L(T_s)*w_sat(T_s,p_s)/(c_p*T_s))    #equivalent potential temperature inside the cloud (irreversible process)
+    #theta_potential_parcel = T_s*(p_n/p_s)**0.286
+    theta_moist_parcel = T_s*(p_n/p_s)**0.286*np.exp(L(T_s)*w_sat(T_s,p_s)/(cpd*T_s))    #equivalent potential temperature inside the cloud (irreversible process)
     theta_dry = T_surf*(p_n/p_surf)**0.286               #equivalent potential temperature outside the cloud
 
     #find where the LCL is located
@@ -54,18 +60,39 @@ def Temp_prof(T_surf,p_surf,T_d,p_air):
 
     T_arr = theta_dry*(p_air/p_n)**0.286*np.ones(len(p_air)) #dry adiabatic lapse rate temperature to use for initialization of the numerical solution
 
-    for i in range(lcl_index,len(p_air)):
-        #solve numerically the equivalent potential temperature equation to get the parcel temperature a each height
-        T_parcel = Symbol('T_parcel')
-        T_func = Eq(theta_moist_parcel,T_parcel * (p_n / p_air[i])**0.286 * exp((A - B * (T_parcel - 273.15)) * w_sat_symbolic(T_parcel,p_air[i]) / (c_p * T_parcel)))
-        T_solve = lambdify(T_parcel, T_func.lhs - T_func.rhs, 'numpy')  #sympy equation
-        T_parcel = fsolve(T_solve, T_arr[i-1])      #numerical solution (equation, initial guess)
-        T_arr[i] = T_parcel     #parcel temperature at height with p_air[i]
+    #Saturated: follow theta_e, theta_l, or theta_e_reversible
+    for i in range(lcl_index, len(p_air)):
+        
+        if theta_type == 'theta_e':
+            def f(T_new):
+                return theta_e(T_new, p_air[i], p_air[0], T_d) - theta_e(T_s, p_s, p_air[0], T_d)
+        elif theta_type == 'theta_l':
+            def f(T_new):
+                return theta_l(T_new, p_air[i], p_air[0], T_d) - theta_l(T_s, p_s, p_air[0], T_d)
+        elif theta_type == 'theta_e_reversible':
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], T_d) - theta_e_reversible(T_s, p_s, p_air[0], T_d)
+        elif theta_type == 'GB84':
+            def f(T_new):
+                return theta_moist_parcel - T_new * (p_n / p_air[i])**0.286 * np.exp(L(T_new) * w_sat(T_new, p_air[i]) / (cpd * T_new))
+        else:
+            raise ValueError(f"Unknown theta_type: {theta_type}")
+
+        T_parcel = fsolve(f, T_arr[i-1])[0]
+        T_arr[i] = T_parcel
+
+    # for i in range(lcl_index,len(p_air)):
+    #     #solve numerically the equivalent potential temperature equation to get the parcel temperature a each height
+    #     T_parcel = Symbol('T_parcel')
+    #     T_func = Eq(theta_moist_parcel,T_parcel * (p_n / p_air[i])**0.286 * exp((A - B * (T_parcel - 273.15)) * w_sat_symbolic(T_parcel,p_air[i]) / (cpd * T_parcel)))
+    #     T_solve = lambdify(T_parcel, T_func.lhs - T_func.rhs, 'numpy')  #sympy equation
+    #     T_parcel = fsolve(T_solve, T_arr[i-1])      #numerical solution (equation, initial guess)
+    #     T_arr[i] = T_parcel     #parcel temperature at height with p_air[i]
 
     return T_arr,lcl_index,p_s,T_s
 
 
-def T_v(T_d,p_surf,p_air,T_arr,lcl_index):
+def T_v(T_d,p_surf,p_air,T_arr,lcl_index,theta_type):
     """
     function to calculate the virtual temperature of the parcel
 
@@ -88,8 +115,12 @@ def T_v(T_d,p_surf,p_air,T_arr,lcl_index):
     q_l[0:lcl_index] = 0    #liquid specific humidity below the LCL
     q_l[lcl_index:] = q_t - q_v[lcl_index:] #liquid specific humidity above the LCL
 
-    T_v_moist = T_arr*(1 +0.61*q_v)# - q_l)   #virtual temperature profile in !pseudo_adiabatic lapse rate!
-                                              # for reversible processes, uncomment the -q_l term
+    if theta_type == 'theta_e_reversible' or theta_type == 'theta_l':
+        T_v_moist = T_arr*(1 +0.61*q_v - q_l)   #virtual temperature profile in !for reversible processes!
+                                              
+    else:
+        T_v_moist = T_arr*(1 +0.61*q_v) #virtual temperature profile in !pseudo_adiabatic lapse rate!
+                                    
     return T_v_moist,q_v
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -149,7 +180,7 @@ def find_lfc(T_v_parcel,T_v_env,Z,lcl_index):
             return 'no LFC',0
         
 #Finding the top of the cloud
-def cloud_top(LFC_index,Z,Z_b,p,p_t,T_v_parcel,T_v_env,T_high,temp_parcel):
+def cloud_top(LFC_index,Z,Z_b,p,T_v_parcel,T_v_env,temp_parcel):
     """
     function to find the top of the cloud
 
@@ -158,10 +189,8 @@ def cloud_top(LFC_index,Z,Z_b,p,p_t,T_v_parcel,T_v_env,T_high,temp_parcel):
         Z: height profile  [m]
         Z_b: base of the cloud  [m]
         p: pressure profile  [Pa]
-        p_t: top pressure - if there is no LNB [Pa]
         T_v_parcel: parcel virtual temperature profile [K]
         T_v_env: environment virtual temperature profile  [K]
-        T_high: parcel temperature profile - if there is no LNB [K]
         temp_parcel: parcel temperature profile [K]
 
     Returns:
@@ -178,10 +207,12 @@ def cloud_top(LFC_index,Z,Z_b,p,p_t,T_v_parcel,T_v_env,T_high,temp_parcel):
                                      ((T_v_parcel-T_v_env)[top_index-1])
             p_t = p[0]/np.exp(g*Z_t/R_dry/np.mean(temp_parcel[0:top_index+1]))
         else:
-            Z_t = R_dry*np.mean(T_high)*np.log(p[0]/p_t)/g
-
-         
+            Z_t = Z[-1] 
+            #Z_t = R_dry*np.mean(T_high)*np.log(p[0]/p_t)/g
+            p_t = p[0]/np.exp(g*Z_t/R_dry/np.mean(temp_parcel))
+        
     else:
             Z_t = 0 
+            p_t = 0
 
     return max(1,Z_t - Z_b), Z_t, p_t

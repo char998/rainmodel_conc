@@ -75,7 +75,7 @@ def rainfall_equation_lambda_only(Lambda, R_target, a, vb):
     return R_model - R_target
 
 # --- Solver for Lambda ---
-def solve_lambda_mu_dependent(R_target, a, vb, bracket=(0.01, 300)):
+def solve_lambda_mu_dependent(R_target, a, vb, bracket=(0.01, 500)):
     """
     Solves the equation for Lambda numerically
 

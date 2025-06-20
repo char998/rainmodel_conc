@@ -2,6 +2,7 @@ import numpy as np
 from constants import *
 from sympy import exp,Piecewise, Pow
 
+Lv0 = 2.501e6
 #equations for saturation vapor pressure, latent heat of condensation and specific humidity
 
 def L(T):
@@ -70,6 +71,71 @@ def specific_humidity_from_rh(T, RH, p):
     q = 0.622 * e / (p - 0.378 * e)
     return q
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#potential temperatures
+def theta_e(T, p, p_0, T_d):
+    """
+    function to calculate the pseudoadiabatic equivalent potential temperature (from Bryan 2008)
+
+    Parameters:
+        T: temperature profile [K]
+        p: pressure profile [Pa]
+        p_0: surface pressure [Pa]
+        T_d: dew point temperature [K]
+
+    Returns:
+        pseudoadiabatic equivalent potential temperature [K]
+    """
+
+    qt = w_sat(T_d,p_0)
+    qv = min(qt, w_sat(T, p))
+    ql = max(0.0, qt - qv)
+    theta = T * (p_0 / p)**(R_dry / cpd)
+    return theta * np.exp(Lv0 * qv / (cpd * T))
+
+# Theta_l (reversible) -- Liquid water potential temperature
+def theta_l(T, p, p_0, T_d):
+    """
+    function to calculate the pseudoadiabatic equivalent potential temperature (from AMS glossary)
+
+    Parameters:
+        T: temperature profile [K]
+        p: pressure profile [Pa]
+        p_0: surface pressure [Pa]
+        T_d: dew point temperature [K]
+
+    Returns:
+        pseudoadiabatic equivalent potential temperature [K]
+    """
+
+    qt = w_sat(T_d,p_0)
+    qv = min(qt, w_sat(T, p))
+    ql = max(0.0, qt - qv)
+    poisson = 0.2854*(1 - 0.24*qv)
+    theta = T * (p_0 / p)**(poisson)
+    return theta * ((epsilon + qv) / (epsilon + qt))**poisson * (qv/qt)**(qt*R_v / (cpd + qt * cpv)) * np.exp(-L(T) * ql / ((cpd + qt * cpv) * T))
+
+
+def theta_e_reversible(T, p, p_0, T_d):
+    """
+    function to calculate the pseudoadiabatic equivalent potential temperature (from AMS glossary)
+
+    Parameters:
+        T: temperature profile [K]
+        p: pressure profile [Pa]
+        p_0: surface pressure [Pa]
+        T_d: dew point temperature [K]
+
+    Returns:
+        pseudoadiabatic equivalent potential temperature [K]
+    """
+
+    qt = w_sat(T_d,p_0)
+    qv = min(qt, w_sat(T, p))  # Saturation adjustment
+    ql = max(0.0, qt - qv)
+    # Reversible equivalent temperature formula
+    theta = T * (p_0 / p)**(R_dry / (cpd + qt * cl))
+    return theta * np.exp(L(T) * qv / ((cpd + qt * cl) * T))
+
 #symbolic equations to be used in sympy numerical solvers
 
 def e_s_symbolic(T):

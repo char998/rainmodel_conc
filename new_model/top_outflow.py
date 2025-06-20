@@ -50,28 +50,37 @@ def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
     D_cloud = Dc_func(X,Z_t-Z_b)
 
     if w_parcel_max>0:
-        Z_mid = (Z_t + Z[lfc_index])/2
-        Z_lim = ((Z_mid - Z_t)*(v_t(D_cloud)*dt + Z_t))/(w_parcel_max*dt + Z_mid - Z_t)
-        Z_min = (v_t(D_cloud)*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]
-        Z_max = (v_t(D_cloud)*(Z_mid - Z_t)/w_parcel_max) + Z_t
+        Z_mid = (Z_t + Z[lfc_index])/2      #the middle of the cloud positive buoyancy region
+        Z_min = (v_t(D_cloud)*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]   #the minimum height for which v_droplet>0
+        Z_max = (v_t(D_cloud)*(Z_mid - Z_t)/w_parcel_max) + Z_t     #the maximum height for which v_droplet>0
 
-    if Z_t <= Z_b or X == 0 or w_parcel_max<alpha*D_cloud:
+        Z_lim_1 = ((Z_mid - Z_t)*(v_t(D_cloud)*dt + Z_t) + Z_t*w_parcel_max*dt)/(w_parcel_max*dt - Z_mid + Z_t)     #the maximum height for which v_droplet sufficient
+                                                                                                                    #to exit the cloud within a timetep
+
+        Z_lim_2 = ((Z_mid - Z[lfc_index])*(v_t(D_cloud)*dt + Z_t) + Z[lfc_index]*w_parcel_max*dt)/(w_parcel_max*dt + Z_mid - Z[lfc_index]) #the minimum height for which v_droplet sufficient
+                                                                                                                    #to exit the cloud within a timetep
+        
+        if Z_lim_1 < Z_max:
+            Z_max = Z_lim_1
+
+        if Z_lim_2 > Z_min:
+            Z_min = Z_lim_2
+    
+
+   
+    if Z_t <= Z_b or X == 0 or w_parcel_max<alpha*D_cloud or Z_lim_1<Z_mid:
             return 0
     else:
+            print(Z_t,Z_min,Z_max,Z_lim_2,Z_lim_1)
             flux_term = np.pi/6*rho_w*D_cloud**3*N_c
-            if Z_min < Z_lim:
-                Z_min = Z_lim
-
     
             if Z_min>Z_mid:
-                    print('1')
                     Delta_Z = Z_max - Z_min
 
                     O_t = flux_term*( w_parcel_max/(Delta_Z)*((Z_max - Z_t)**2/2 - (Z_min - Z_t)**2/2)/(Z_mid - Z_t) \
                             - v_t(D_cloud)*(Z_max - Z_min))
 
             else:
-                    print('2')
                     Delta_Z2 = Z_max - Z_mid
                     Delta_Z1 = Z_mid - Z_min
 
