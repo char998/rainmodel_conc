@@ -71,7 +71,7 @@ def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
     if Z_t <= Z_b or X == 0 or w_parcel_max<alpha*D_cloud or Z_lim_1<Z_mid:
             return 0
     else:
-            print(Z_t,Z_min,Z_max,Z_lim_2,Z_lim_1)
+            #print(Z_t,Z_min,Z_max,Z_lim_2,Z_lim_1)
             flux_term = np.pi/6*rho_w*D_cloud**3*N_c
     
             if Z_min>Z_mid:
