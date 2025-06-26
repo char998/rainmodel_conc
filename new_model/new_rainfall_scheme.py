@@ -101,7 +101,7 @@ def solve_lambda_mu_dependent(R_target, a, vb, bracket=(0.01, 500)):
     else:
         raise RuntimeError("Lambda root-finding did not converge")
     
-def precipitation_rate(R, mu, Lambda, Dc,Vb, a):
+def ground_precipitation_rate(R, mu, Lambda, Dc,Vb, a):
     """
     Compute precipitation rate at the ground using gamma DSD.
 

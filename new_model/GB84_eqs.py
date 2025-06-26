@@ -1,5 +1,6 @@
 from constants import R_dry
 from physics_equations import w_sat
+import numpy as np
 
 
 def rho_m(T_s,T_t,p_s,p_t):
@@ -23,7 +24,7 @@ def rho_m(T_s,T_t,p_s,p_t):
 # In[64]:
 
 
-def f(T_d,p_0,p_t,T_t,rho,v):
+def calculate_liquid_water_flux(T_d,p_0,p_t,T_t,rho,v):
     """
     function to calculate the flux of liquid water inside the cloud
 
@@ -44,4 +45,8 @@ def f(T_d,p_0,p_t,T_t,rho,v):
     w_s = w_sat(T_t,p_t)
 
     return (w_0 - w_s)*rho*v
+
+def flux_2(rho,v,q_l_parcel,lcl_index,top_index):
+
+    return rho*v*(np.sum(q_l_parcel[lcl_index:top_index+1]))
 

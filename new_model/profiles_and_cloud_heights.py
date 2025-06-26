@@ -3,6 +3,7 @@ from constants import A,B,cpd,g,R_dry
 from physics_equations import w_sat,specific_humidity_from_rh, w_sat_symbolic,L,theta_e,theta_e_reversible,theta_l
 from sympy import Symbol, Eq,exp, lambdify
 from scipy.optimize import fsolve
+from entrainment import entrainment_theta, entrainment_q
 
 
 def met_profiles(T_surf,p_surf,p_t):
@@ -22,7 +23,7 @@ def met_profiles(T_surf,p_surf,p_t):
     T_air = T_surf*(p_air/p_surf)**0.286
     return p_air, T_air
     
-def Temp_prof(T_surf,p_surf,T_d,p_air,theta_type):
+def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
     """
     function to calculate the temperature profile of the parcel given the pressure levels
     and using the irreversible process equivalent potential temperature
@@ -91,8 +92,90 @@ def Temp_prof(T_surf,p_surf,T_d,p_air,theta_type):
 
     return T_arr,lcl_index,p_s,T_s
 
+def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q_air, Z, lfc_index, entrainment_rate, theta_type):
+    """
+    Calculate the moist parcel temperature profile and total humidity by considering entrainment
 
-def T_v(T_d,p_surf,p_air,T_arr,lcl_index,theta_type):
+    Parameters:
+        T_s: temperature at the LCL               [K]
+        T_d: dew point temperature in the surface  [K]
+        T_air: air temperature profile                [K]
+        T_parcel: parcel temperature profile      [K]
+        p_s: pressure at the LCL                  [Pa]
+        p_air: pressure levels                    [Pa]
+        q_air: environmental vapor specific humidity profile    [kg/kg]
+        Z: height levels                          [m]
+        lfc_index: index of the LFC
+        entraintment_rate: entrainment rate       [1/m]
+        theta_type: choose which approach to follow for 
+                    the conserved potential temperature: 
+                                                       - theta_e: pseudo-adiabatic equivalent potential temperature
+                                                       - theta_e_reversible: reversible equivalent potential temperature
+                                                       - theta_l: liquid water potential temperature    
+                                                       - GB84: GB84 equivalent potential temperature
+
+    Returns:    
+        T_parcel_new: parcel temperature profile with entrainment [K]
+        q_t_parcel_new: total specific humidity profile with entrainment [kg/kg]
+    """
+
+    q_t_parcel = w_sat(T_d,p_air[0])        #initial moisture content of parcel
+    q_t_parcel_new = q_t_parcel*np.ones(len(Z))
+    q_t_parcel_new[lfc_index:] = entrainment_q(entrainment_rate,q_t_parcel,Z[lfc_index:],q_air[lfc_index:])   #moisture content of parcel after entrainment
+    
+    T_parcel_new = T_parcel.copy()
+
+    if theta_type == 'theta_e':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(L(T_air) * q_air / (cpd * T_air))
+        theta_conserved = theta_e(T_s, p_s, p_air[0], T_d)
+
+    elif theta_type == 'theta_l':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286     #no liquid water, θ_l = θ
+        theta_conserved = theta_l(T_s, p_s, p_air[0], T_d)
+   
+    elif theta_type == 'theta_e_reversible':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(L(T_air) * q_air / (cpd * T_air))
+        theta_conserved = theta_e_reversible(T_s, p_s, p_air[0], T_d)
+
+    elif theta_type == 'GB84':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(L(T_air) * q_air / (cpd * T_air))
+        theta_conserved = T_s * (p_air[0] / p_s) ** 0.286 * np.exp(L(T_s) * w_sat(T_s, p_s) / (cpd * T_s))
+    
+    else:
+        raise ValueError(f"Unknown theta_type: {theta_type}")
+    
+    #potential temperature of parcel after entrainment (not conserved anymore)
+    Theta_new = entrainment_theta(entrainment_rate,theta_conserved,Z, 
+                                       Theta_air)
+    
+    for i in range(lfc_index + 1, len(p_air)):
+
+
+        if theta_type == 'theta_e':
+            def f(T_new):
+                return theta_e(T_new, p_air[i], p_air[0], T_d) - Theta_new[i]
+
+        elif theta_type == 'theta_l':
+            def f(T_new):
+                return theta_l(T_new, p_air[i], p_air[0], T_d) - Theta_new[i]
+
+        elif theta_type == 'theta_e_reversible':
+
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], T_d) - Theta_new[i]
+
+        elif theta_type == 'GB84':
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], T_d) - Theta_new[i]
+
+        T_parcel_new[i] = fsolve(f, T_parcel[i])[0]
+        
+
+    return T_parcel_new,q_t_parcel_new
+
+
+
+def calculate_parcel_T_v_profile(T_d,p_surf,p_air,T_arr,lcl_index,theta_type):
     """
     function to calculate the virtual temperature of the parcel
 
@@ -123,6 +206,33 @@ def T_v(T_d,p_surf,p_air,T_arr,lcl_index,theta_type):
                                     
     return T_v_moist,q_v
 
+def calculate_humidity_profiles_with_entrainment(T_d,p_surf,p_air,T_arr,q_t_entr,lcl_index):
+
+    """
+    Update the parcel humidity profiles after taking into account entrainment
+
+    Parameters:
+        T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
+        p_air: pressure levels                    [Pa]
+        T_arr: parcel temperature profile                [K]
+        q_t_entr: specific humidity profile with entrainment [kg/kg]
+
+    Returns:
+        q_l: liquid specific humidity profile       [kg/kg]
+        q_v: vapor specific humidity profile        [kg/kg]
+    """
+
+    q_t = np.zeros(len(T_arr))
+    q_v = np.zeros(len(T_arr))
+    q_t[0:lcl_index] = w_sat(T_d,p_surf)
+    q_t[lcl_index:] = q_t_entr[lcl_index:]
+    q_v[0:lcl_index] = w_sat(T_d,p_surf)
+    q_v[lcl_index:] = w_sat(T_arr[lcl_index:],p_air[lcl_index:])
+    q_l = np.maximum(0, q_t - q_v)
+
+    return q_l,q_v
+
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # FINDING THE LFC
 
@@ -133,7 +243,7 @@ def T_v(T_d,p_surf,p_air,T_arr,lcl_index,theta_type):
     #4.No LFC is found at the examined heights
 
 
-def find_lfc(T_v_parcel,T_v_env,Z,lcl_index):
+def find_lfc_level(T_v_parcel,T_v_env,Z,lcl_index):
     """
     function to find he lfc height
 
@@ -180,7 +290,7 @@ def find_lfc(T_v_parcel,T_v_env,Z,lcl_index):
             return 'no LFC',0
         
 #Finding the top of the cloud
-def cloud_top(LFC_index,Z,Z_b,p,T_v_parcel,T_v_env,temp_parcel):
+def find_cloud_top_and_depth(LFC_index,Z,Z_b,p,T_v_parcel,T_v_env,temp_parcel):
     """
     function to find the top of the cloud
 

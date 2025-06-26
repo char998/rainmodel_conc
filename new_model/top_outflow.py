@@ -1,11 +1,10 @@
 from constants import alpha
 import numpy as np
-from constants import alpha
 
 rho_w = 1000    #water density
 N_c = 1e9       #cloud droplet concentration
 
-def Dc_func(X,Z_c):
+def cloud_droplet_diameter(X,Z_c):
     """
     Monodisperse cloud droplet diameter (from Murakami 1989)
 
@@ -19,7 +18,7 @@ def Dc_func(X,Z_c):
     D_c = ((6*X/Z_c)/(np.pi*N_c*rho_w))**(1/3)
     return D_c
 
-def v_t(D):
+def droplet_fall_velocity(D):
     """
     Droplet fall velocity (from Georgakakos and Bras 1984a)
 
@@ -28,7 +27,7 @@ def v_t(D):
     """
     return alpha*D
 
-def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
+def calculate_water_top_outflow(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
     """
     Cloud outflow rate
 
@@ -47,17 +46,18 @@ def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
     
     #finding the characteristic heights
     Z_t = Z[top_index]
-    D_cloud = Dc_func(X,Z_t-Z_b)
+    D_cloud = cloud_droplet_diameter(X,Z_t-Z_b)
 
     if w_parcel_max>0:
+        v_t = droplet_fall_velocity(D_cloud)
         Z_mid = (Z_t + Z[lfc_index])/2      #the middle of the cloud positive buoyancy region
-        Z_min = (v_t(D_cloud)*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]   #the minimum height for which v_droplet>0
-        Z_max = (v_t(D_cloud)*(Z_mid - Z_t)/w_parcel_max) + Z_t     #the maximum height for which v_droplet>0
+        Z_min = (v_t*(Z_mid - Z[lfc_index])/w_parcel_max) + Z[lfc_index]   #the minimum height for which v_droplet>0
+        Z_max = (v_t*(Z_mid - Z_t)/w_parcel_max) + Z_t     #the maximum height for which v_droplet>0
 
-        Z_lim_1 = ((Z_mid - Z_t)*(v_t(D_cloud)*dt + Z_t) + Z_t*w_parcel_max*dt)/(w_parcel_max*dt - Z_mid + Z_t)     #the maximum height for which v_droplet sufficient
+        Z_lim_1 = ((Z_mid - Z_t)*(v_t*dt + Z_t) + Z_t*w_parcel_max*dt)/(w_parcel_max*dt - Z_mid + Z_t)     #the maximum height for which v_droplet sufficient
                                                                                                                     #to exit the cloud within a timetep
 
-        Z_lim_2 = ((Z_mid - Z[lfc_index])*(v_t(D_cloud)*dt + Z_t) + Z[lfc_index]*w_parcel_max*dt)/(w_parcel_max*dt + Z_mid - Z[lfc_index]) #the minimum height for which v_droplet sufficient
+        Z_lim_2 = ((Z_mid - Z[lfc_index])*(v_t*dt + Z_t) + Z[lfc_index]*w_parcel_max*dt)/(w_parcel_max*dt + Z_mid - Z[lfc_index]) #the minimum height for which v_droplet sufficient
                                                                                                                     #to exit the cloud within a timetep
         
         if Z_lim_1 < Z_max:
@@ -84,8 +84,8 @@ def O_t(X,top_index,Z_b,Z,w_parcel_max,lfc_index,dt):
                     Delta_Z2 = Z_max - Z_mid
                     Delta_Z1 = Z_mid - Z_min
 
-                    O_t = flux_term*((1/Delta_Z1)*( w_parcel_max*((Z_mid - Z[lfc_index])**2/2 - (Z_min - Z[lfc_index])**2/2)/(Z_mid - Z[lfc_index]) - v_t(D_cloud)*(Z_mid - Z_min))\
-                            + (1/Delta_Z2)*( w_parcel_max*((Z_max - Z_t)**2/2 - (Z_mid - Z_t)**2/2)/(Z_mid - Z_t) - v_t(D_cloud)*(Z_max - Z_mid))) 
+                    O_t = flux_term*((1/Delta_Z1)*( w_parcel_max*((Z_mid - Z[lfc_index])**2/2 - (Z_min - Z[lfc_index])**2/2)/(Z_mid - Z[lfc_index]) - v_t*(Z_mid - Z_min))\
+                            + (1/Delta_Z2)*( w_parcel_max*((Z_max - Z_t)**2/2 - (Z_mid - Z_t)**2/2)/(Z_mid - Z_t) - v_t*(Z_max - Z_mid))) 
 
             return O_t
 

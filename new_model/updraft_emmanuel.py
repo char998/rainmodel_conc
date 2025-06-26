@@ -1,7 +1,7 @@
 import numpy as np
 from constants import R_dry
 
-def w_parcel(p,T_v_moist,T_v_env,lfc_index,p_t,top_index):
+def calculate_parcel_updraft_velocity(p,T_v_moist,T_v_env,lfc_index,p_t,top_index):
 
     """
     the scheme for calculating the maximum updraft velocity (Emanuel 1991)
@@ -21,6 +21,7 @@ def w_parcel(p,T_v_moist,T_v_env,lfc_index,p_t,top_index):
     if top_index>1 and top_index>int(lfc_index):
     #implementation of the CAPE equation and integration
         delta_ln_p = -np.diff(np.log(p[int(lfc_index):top_index+1]))
+        print(delta_ln_p)
         buoyancy = R_dry * (T_v_moist - T_v_env)[int(lfc_index):top_index]
         CAPE = np.sum(buoyancy * delta_ln_p)
         w_parcel_max = np.sqrt(2 * CAPE)

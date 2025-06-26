@@ -7,7 +7,7 @@ thresh = 0.0005 #kg/m^3 -from Kessler (1969)
 a = 0.001   #s-1 -from Kessler (1969)
 rho_a = 1.2 #kg/m^3
 
-def autoconoversion_rate(X,Z_c,thresh):
+def cloud_water_autoconoversion_rate(X,Z_c,thresh):
     """
     Kessler autoconversion rate (Kessler 1969)
 
@@ -63,7 +63,7 @@ class critical_diameter:
          return fsolve(self.equation_Tw, T_w_initial)
      
      
-    def calculate_D_c(self):
+    def calculate_evaporation_critical_diameter(self):
         """
         Calculate the critical diameter for evaporation D_c [m]
         """
