@@ -16,11 +16,11 @@ B = 2.38e3  # (J/(kg K))
 cp = 1001
 
 def w(T,P):
-    #mixing ratio
+    "mixing ratio"
     return epsilon*A_1*(T - 223.15)**3.5/P
 
 def L(T):
-    #latent heat of condensation
+    "latent heat of condensation"
     return A - B*(T - 273.15)
 
 def met_profiles(T_surf,p_surf,p_t):

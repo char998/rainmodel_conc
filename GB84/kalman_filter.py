@@ -1,6 +1,6 @@
-G = 1 #process noise mapping - how sensitive the state is on noise
-Q = 10 #process noise covariance - covariance of white noise
-R = 10/3600 #measurement noise covariance - covariance of white noise
+Gamma = 1 #process noise mapping - how sensitive the state is on noise (Γ in the paper)
+Q = 0.32 #process noise covariance - variance of white noise
+R = 0.38/3600 #measurement noise covariance - covariance of white noise
 
 class kalman_filter:
     def __init__(self, X_initial, Sigma_initial, dt,h,Phi,f,P_meas):
@@ -14,11 +14,13 @@ class kalman_filter:
 
     def update(self):
         X_apriori = (1 - self.h*self.dt)*self.X_initial + self.f*self.dt
-        Sigma_apriori = (1 - self.h*self.dt)*self.Sigma_initial*(1 - self.h*self.dt) + G**2*Q
-        K_gain = Sigma_apriori*self.Phi/(self.Phi*Sigma_apriori*self.Phi + R)
-
+        
+        Sigma_apriori = (1 + 2*self.h*self.dt)*self.Sigma_initial + Gamma**2*Q*self.dt
+        K_gain = Sigma_apriori*self.Phi/(self.Phi*Sigma_apriori*self.Phi + R/self.dt)
+        #print(K_gain)
 
         X_posterior = X_apriori + K_gain*(self.P_meas/3600 - self.Phi*X_apriori)
+        print(X_posterior,X_apriori)
         Cov_posterior = (1 - K_gain*self.Phi)*Sigma_apriori
 
-        return X_posterior, Cov_posterior
+        return X_posterior, Cov_posterior,Sigma_apriori

@@ -92,7 +92,7 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
 
     return T_arr,lcl_index,p_s,T_s
 
-def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q_air, Z, lfc_index, entrainment_rate, theta_type):
+def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q_air, Z, lcl_index, entrainment_rate, theta_type):
     """
     Calculate the moist parcel temperature profile and total humidity by considering entrainment
 
@@ -121,7 +121,7 @@ def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q
 
     q_t_parcel = w_sat(T_d,p_air[0])        #initial moisture content of parcel
     q_t_parcel_new = q_t_parcel*np.ones(len(Z))
-    q_t_parcel_new[lfc_index:] = entrainment_q(entrainment_rate,q_t_parcel,Z[lfc_index:],q_air[lfc_index:])   #moisture content of parcel after entrainment
+    q_t_parcel_new[lcl_index:] = entrainment_q(entrainment_rate,q_t_parcel,Z[lcl_index:],q_air[lcl_index:])   #moisture content of parcel after entrainment
     
     T_parcel_new = T_parcel.copy()
 
@@ -148,7 +148,7 @@ def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q
     Theta_new = entrainment_theta(entrainment_rate,theta_conserved,Z, 
                                        Theta_air)
     
-    for i in range(lfc_index + 1, len(p_air)):
+    for i in range(lcl_index + 1, len(p_air)):
 
 
         if theta_type == 'theta_e':
@@ -256,38 +256,42 @@ def find_lfc_level(T_v_parcel,T_v_env,Z,lcl_index):
         lfc: the lfc height [m]
     """
 
-    #case 1
     if T_v_parcel[lcl_index] > T_v_env[lcl_index]:
-        return 'yes',lcl_index
-    
-    #case 2 and 3
+        return 'yes', lcl_index  # Case 1: Already buoyant at LCL
+
     else:
-        condition = T_v_parcel[lcl_index:]>T_v_env[lcl_index:]
+        condition = T_v_parcel[lcl_index:] > T_v_env[lcl_index:]
         if np.any(condition):
             LFC_index = np.argmax(condition) + lcl_index
-            #find the energy the parcel gains in the boundary layer
-            BIN_lower = np.argmax(T_v_parcel>T_v_env)
-            BIN_upper = np.argmax(T_v_parcel[BIN_lower:]<T_v_env[BIN_lower:]) + BIN_lower
-            BIN = 0.0
+
+            # --- CIN: from LCL to LFC where parcel is negatively buoyant ---
+            mask_cin = T_v_parcel[lcl_index:LFC_index] < T_v_env[lcl_index:LFC_index]
+            if np.any(mask_cin):
+                y_cin = g * (T_v_parcel[lcl_index:LFC_index][mask_cin] - T_v_env[lcl_index:LFC_index][mask_cin]) / T_v_parcel[lcl_index:LFC_index][mask_cin]
+                Z_cin = Z[lcl_index:LFC_index][mask_cin]
+                CIN = -np.trapz(y_cin, Z_cin)
+            else:
+                CIN = 0.0
+
+            # --- BIN: from LFC upward until buoyancy turns negative ---
+            BIN_lower = LFC_index
+            condition_bin = T_v_parcel[BIN_lower:] > T_v_env[BIN_lower:]
+            if np.any(condition_bin):
+                BIN_upper = np.argmax(~condition_bin) + BIN_lower
+            else:
+                BIN_upper = len(Z)  # buoyancy remains positive until top
 
             y_bin = g * (T_v_parcel[BIN_lower:BIN_upper] - T_v_env[BIN_lower:BIN_upper]) / T_v_parcel[BIN_lower:BIN_upper]
-            BIN = np.trapz(y_bin, Z[BIN_lower:BIN_upper])
-        
-            #find how much energy needed to go above the CIN
-            CIN = 0.0
-            y_cin = g * (T_v_parcel[BIN_lower:BIN_upper] - T_v_env[BIN_lower:BIN_upper]) / T_v_parcel[BIN_lower:BIN_upper]
-            CIN = abs(np.trapz(y_cin, Z[BIN_lower:BIN_upper]))
+            Z_bin = Z[BIN_lower:BIN_upper]
+            BIN = np.trapz(y_bin, Z_bin)
 
-            #case 2
+            # --- Decision ---
             if CIN <= BIN:
-                 return 'yes',LFC_index
-            #case 3
+                return 'yes', LFC_index  # Case 2: CIN is overcome
             else:
-                return 'not reached',0
-        
-        #case 4
+                return 'not reached', 0   # Case 3: CIN too strong
         else:
-            return 'no LFC',0
+            return 'no LFC', 0  # Case 4: no crossing of parcel above environment
         
 #Finding the top of the cloud
 def find_cloud_top_and_depth(LFC_index,Z,Z_b,p,T_v_parcel,T_v_env,temp_parcel):

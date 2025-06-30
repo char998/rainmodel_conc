@@ -215,9 +215,9 @@ def cloud_top(LFC_index,Z,Z_b,p,p_t,T_v_parcel,T_v_env,T_high,temp_parcel):
             top_index = np.argmax(condition) + LFC_index[1]
             Z_t = Z[top_index-1] + (Z[top_index] - Z[top_index-1])/((T_v_parcel-T_v_env)[top_index-1] - (T_v_parcel-T_v_env)[top_index])*\
                                      ((T_v_parcel-T_v_env)[top_index-1])
-            p_t = p[0]/np.exp(g*Z_t/R/np.mean(temp_parcel[0:top_index]))
+            #p_t = p[0]/np.exp(g*Z_t/R/np.mean(temp_parcel[0:top_index]))
         else:
-            Z_t = R*np.mean(T_high)*np.log(p[0]/p_t)/g
+            Z_t = Z[-1]
 
          
     else:
