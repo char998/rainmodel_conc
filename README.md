@@ -6,6 +6,8 @@ The repository for my MSc thesis - *ES25: A Simplified Conceptual Convective Pre
 - **Contents**:
   - **GB84.py**: The Python implementation of the physical core of the model
   - **kalman_filter.py**: The kalman filter module for data assimilation.
+  - **storm_invariant_constants.py**: The model constants values as proposed in *A Generalized Stochastic Hydrometeorological Model
+for Flood and Flash-Flood Forecasting 1.Formulation*, Georgakakos (1986)
   - Two Jupyter Notebooks:
     - **runs_and_tests.ipynb**: Tests only the physical core of the GB84 model.
     - **runs_and_tests_with_kalman.ipynb**: Tests the stochastic formulation of GB84, comparing different data assimilation windows.
