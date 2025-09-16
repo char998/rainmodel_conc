@@ -2,37 +2,14 @@
 
 # In[58]:
 
-
+from storm_invariant_constants import *
 import numpy as np
 from scipy.optimize import fsolve,least_squares
-import xarray as xr
 from sympy import Symbol, Eq,exp, sqrt, lambdify
 from sympy import exp, sqrt, Max
-import matplotlib.pyplot as plt
-from kalman_filter import kalman_filter as kf
 
-# Constants (taken from A Generalized Stochastic Hydrometeorological Model 
-#for Flood and Flash-Flood Forecasting, Georgakakos 1986)
 
-epsilon = 0.622  # unitless
-A = 2.5e6  # (J/kg)
-B = 2.38e3  # (J/(kg K))
-A_1 = 8e-4  # (kg/(m·s²·K^3.5))
-A_2 = 2.11e-5  # (m²/s) 
-T_star = 273.15  # (K)
-p_star = 101325  # (kg/(m·s²))
-p_n = 1e5  # nominal pressure - (kg/(m·s²))
-g = 9.80  # (m/s²)
-R = 287  # (J/(kg·K))
-R_v = 461  # (J/(kg·K))
-c_p = 1004  # (J/(kg·K))
-p_l = 2e4  # lowest possible cloud top pressure - (kg/(m·s²))
-alpha_rain = 3500  # (1/s) for rain
-alpha_snow = 1500  # (1/s) for snow
-c1_rain = 7e5  # (kg/(m³·s)) for rain
-c1_snow = 1.4e5  # (kg/(m³·s)) for snow
-C_1 = c1_rain
-alpha = alpha_rain
+
 
 
 
@@ -170,84 +147,7 @@ class calculations_for_convection:
     def run(self):
         p_s,T_s = self.p_s,self.T_s
         p_t, T_m, T_t,T_s_up, p_s_up = self.calculate_cloud_top(self.T_0,self.p_0,self.p_s,self.Theta_e)
-        return p_s,T_s,p_t, T_m, T_t,T_s_up, p_s_up#,self.Theta_e
-
-
-# In[68]:
-class variables_2:
-    ## alteration of the original class, for directly calculating p_t when having already calculated v_updr
-    def __init__(self, T_0, T_d, p_0,v_updr, obs):
-        self.T_0 = T_0
-        self.T_d = T_d
-        self.p_0 = p_0
-        self.obs = obs
-        self.v_updr = v_updr    
-        self.p_s, self.T_s = self.calculate_cloud_base(T_0, T_d, p_0)
-        self.Theta_e = self.calculate_Theta_e(self.T_s,self.p_s)
-        
-    @staticmethod
-    def calculate_cloud_base(T_0, T_d, p_0):
-        # cloud base pressure, temperature and specific humidity
-        p_s = (1/((T_0 - T_d)/223.15 + 1))**3.5 *p_0
-        T_s = (1/((T_0 - T_d)/223.15 + 1))* T_0
-        return p_s, T_s
-    
-
-    def calculate_Theta_e(self, T_s, p_s):
-        # equivalent potential temperature inside the cloud
-        Theta_e = T_s*(p_n/p_s)**0.286*np.exp(L(T_s)*w(T_s,p_s)/(c_p*T_s))
-        return Theta_e
-#--------------------------------------------------------------------------------------------------------------------------
-    def calculate_cloud_top(self,T_0,p_0,p_s,Theta_e,v_updr):
-        if self.obs:
-            #if they are available from observations, obs=True
-            T_t = T_t
-            p_t = p_t
-        else:
-            #p_t = Symbol('p_t')
-            p_t = p_l + (epsilon_2 - p_l) / (1 + epsilon_3 *v_updr)
-            T_m = Symbol('T_m')
-            T_t = Symbol('T_t')
-
-
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # solve only for T_m 
-           
-            f2 = Eq(Theta_e,T_m * (p_n / (3/4 * p_s + 1/4 * p_t))**0.286 * exp((A - B * (T_m - 273.15)) #replaced L(T) with the whole expression for fsolve
-                                * (epsilon*A_1*abs(T_m - 223.15)**3.5/(3/4 * p_s + 1/4 * p_t))/ (c_p * T_m))
-                                
-                                
-                                ) # whole expression here instead of p'
-
-            # Convert the symbolic equations to numerical functions using lambdify
-            f2_func = lambdify(T_m, f2.lhs - f2.rhs, 'numpy')
-
-            # Set your initial guesses
-            initial_guesses = [240]  
-            bounds_lower = [223.15]
-            bounds_upper = [T_0]
-            # Solve the system using fsolve
-            solution = least_squares(f2_func, initial_guesses, bounds=(bounds_lower, bounds_upper))
-
-            # Extract solution
-            T_m = solution.x
-#----------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # solve the non-linear equation for T_t
-            f3 = Eq(Theta_e,T_t * (p_n / p_t)**0.286 * exp((A - B * (T_t - 273.15)) * (epsilon*A_1*abs(T_t - 223.15)**3.5/(p_t)) / (c_p * T_t)))
-            f3_func = lambdify(T_t, f3.lhs - f3.rhs, 'numpy')
-            T_t = fsolve(f3_func, 240)
-
-            # find the ambient air temperature and pressure
-            p_s_up = 3/4 * p_s + 1/4 * p_t  #p_s'
-            T_s_up = T_0 / (p_0/(p_s_up))**0.286 #T_s'
-
-        return p_t, T_m, T_t,T_s_up, p_s_up
-#--------------------------------------------------------------------------------------------------------------------------
-    def run(self):
-        p_s,T_s = self.p_s,self.T_s
-        p_t, T_m, T_t,T_s_up, p_s_up = self.calculate_cloud_top(self.T_0,self.p_0,self.p_s,self.Theta_e,self.v_updr)
         return p_s,T_s,p_t, T_m, T_t,T_s_up, p_s_up
-
 
 def cloud_heights(T_s,T_t,T_0,p_s,p_t,p_0):
     """
@@ -272,15 +172,6 @@ def cloud_heights(T_s,T_t,T_0,p_s,p_t,p_0):
     Z_b = R*(T_s + T_0)/(2*g)*np.log(p_0/p_s)
 
     return Z_c,Z_b
-
-    
-
-
-# In[66]:
-
-
-
-
 
 # #### Fluxes, state and precipitation
 
@@ -432,31 +323,3 @@ class phi:
             phi_t = self.V_p/(self.Z_c*delta)*(self.O_b - 1/24*N_D**3/ np.exp(self.N_v))
 
         return phi_t
-
-
-# In[70]:
-
-
-class state:
-    def __init__(self,X,T_d,T_0,p_0,Z_c,Z_b,dt,p_t,T_t,rho,v):
-        self.X = X
-        self.dt = dt
-        self.T_d = T_d
-        self.T_0 = T_0
-        self.p_0 = p_0
-        self.Z_c = Z_c
-        self.Z_b = Z_b
-        self.p_t = p_t
-        self.T_t = T_t
-        self.rho = rho
-        self.v = v
-        self.V_p = non_dim_numbers(self.v)[0]
-        self.N_v = non_dim_numbers(self.v)[1]
-
-    def state_evol(self):
-        X_new = self.X + self.dt*(f(self.T_d,self.p_0,self.p_t,self.T_t,self.rho,self.v) \
-                                  - h_out(self.v,self.Z_c).run()[2]*self.X)
-        if X_new<0:
-         X_new = 0
-        return X_new
-

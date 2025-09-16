@@ -411,7 +411,7 @@ class phi:
      def solve_Tw(self):
         #numerical solution of wet bulb temperature
          T_w_initial = 290
-         return fsolve(self.equation_Tw, T_w_initial)
+         return fsolve(self.equation_Tw, T_w_initial)[0]
      
      
      def calculate_phi(self):
@@ -431,7 +431,7 @@ class phi:
         else:
             phi_t = self.V_p/(self.Z_c*delta)*(self.O_b - 1/24*N_D**3/ np.exp(self.N_v))
 
-        return phi_t
+        return phi_t,D_c
 
 
 # In[70]:

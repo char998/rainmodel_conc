@@ -1,7 +1,7 @@
 {
   "theta_type": "theta_e_reversible",
   "entrainment_beginning": "from LCL",
-  "interp_interval": "No",
+  "interp_interval": "10min",
   "start_date": "2024-07-16",
   "end_date": "2024-07-17",
   "start_time": "00:00:00",
