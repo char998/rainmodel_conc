@@ -1,0 +1,14 @@
+python=3.9
+numpy
+scipy
+sympy
+ipywidgets
+jupyter
+notebook
+ipython
+pytz
+matplotlib
+pandas
+xarray
+pip
+ipywidgets>=7.6.0

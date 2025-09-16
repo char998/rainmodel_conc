@@ -13,6 +13,7 @@ dependencies:
   - pytz
   - matplotlib
   - pandas
+  - xarray
   - pip
   - pip:
     - ipywidgets>=7.6.0
