@@ -1,12 +1,16 @@
-python=3.9
+python=3.11
 numpy
 scipy
 sympy
+ipywidgets
 jupyter
 notebook
 ipython
 pytz
 matplotlib
 pandas
+xarray
+netCDF4
+dask
 pip
 ipywidgets>=7.6.0

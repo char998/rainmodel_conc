@@ -1,12 +1,13 @@
-name: GB84
+name: ES25
 channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9
+  - python=3.11
   - numpy
   - scipy
   - sympy
+  - ipywidgets
   - jupyter
   - notebook
   - ipython
@@ -14,6 +15,8 @@ dependencies:
   - matplotlib
   - pandas
   - xarray
+  - netCDF4
+  - dask
   - pip
   - pip:
     - ipywidgets>=7.6.0
