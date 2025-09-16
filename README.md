@@ -1,4 +1,4 @@
-The repository for my MSc thesis - ES25: A Simplified Conceptual Convective Precipitation Model
+The repository for my MSc thesis - *ES25: A Simplified Conceptual Convective Precipitation Model*
 
 
 **GB84** : the code of the GB84 model (Georgakakos and Bras 1984). It contains the python file for the physical model, the Kalman filter implementation and two test notebooks: one for testing only the physical core of GB84 and one for testing and comparing the stochastic formulation of GB84 WITH different assimilation windows
