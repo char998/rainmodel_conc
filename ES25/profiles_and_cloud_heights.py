@@ -1,7 +1,6 @@
 import numpy as np
 from constants import cpd,g,R_dry,cl,Lv0
 from physics_equations import w_sat,theta_potential
-#from sympy import Symbol, Eq,exp, lambdify
 from scipy.optimize import fsolve,brentq
 
 
@@ -13,8 +12,8 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
 
     Parameters:
         T_surf: surface temperature               [K]
-        T_d: dew point temperature in the surface  [K]
         p_surf: surface pressure                  [Pa]
+        T_d: dew point temperature in the surface  [K]
         p_air: pressure levels                    [Pa]
         theta_type: choose which approach to follow for 
                     the conserved potential temperature: 
@@ -88,9 +87,15 @@ def calculate_parcel_T_v_profile(T_d,p_air,T_arr,lcl_index,theta_type):
 
     Parameters:
         T_d: dew point temperature in the surface  [K]
-        p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
         T_arr: temperature profile                [K]
+        lcl_index: index of the LCL
+        theta_type: choose which approach to follow for 
+                    the conserved potential temperature: 
+                    - theta_e: pseudo-adiabatic equivalent potential temperature with constant latent heat    
+                    - theta_e_reversible: reversible equivalent potential temperature
+                    - theta_l: liquid water potential temperature   
+                    - GB84: pseudo-adiabatic equivalent potential temperature from Georgakakos and Bras 1984
     
     Returns:
         T_v_moist: parcel virtual temperature profile    [K]
@@ -152,6 +157,7 @@ def find_lfc_level(T_v_parcel,T_v_env,Z,lcl_index):
         T_v_parcel: parcel virtual temperature profile [K]
         T_v_env: environment virtual temperature profile  [K]
         Z: height profile  [m]
+        lcl_index: index of the LCL
 
     Returns:
         lfc: the lfc height [m]

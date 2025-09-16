@@ -93,7 +93,7 @@ def theta_GB84(T, p, p_0,qt):
         T: temperature profile [K]
         p: pressure profile [Pa]
         p_0: surface pressure [Pa]
-        T_d: dew point temperature [K]
+        qt: total specific humidity profile [kg/kg]
 
     Returns:
         pseudoadiabatic equivalent potential temperature [K]
@@ -113,7 +113,7 @@ def theta_e(T, p, p_0,qt):
         T: temperature profile [K]
         p: pressure profile [Pa]
         p_0: surface pressure [Pa]
-        T_d: dew point temperature [K]
+        qt: total specific humidity profile [kg/kg]
 
     Returns:
         pseudoadiabatic equivalent potential temperature [K]
@@ -136,7 +136,7 @@ def theta_l(T, p, p_0, qt):
         T: temperature profile [K]
         p: pressure profile [Pa]
         p_0: surface pressure [Pa]
-        T_d: dew point temperature [K]
+        qt: total specific humidity profile [kg/kg]
 
     Returns:
         pseudoadiabatic equivalent potential temperature [K]
@@ -158,7 +158,7 @@ def theta_e_reversible(T, p, p_0,qt):
         T: temperature profile [K]
         p: pressure profile [Pa]
         p_0: surface pressure [Pa]
-        T_d: dew point temperature [K]
+        qt: total specific humidity profile [kg/kg]
 
     Returns:
         pseudoadiabatic equivalent potential temperature [K]

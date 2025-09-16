@@ -1,5 +1,4 @@
 from constants import R_dry
-from physics_equations import w_sat
 import numpy as np
 
 
@@ -27,6 +26,7 @@ def condensation_flux(rho,v,q_l_parcel,lcl_index,top_index,theta_type):
     Parameters:
         rho: average density inside the cloud [kg/m3]
         v: average velocity inside the cloud [m/s]
+        q_l_parcel: profile of parcel liquid water specific humidity  [kg/kg]
         lcl_index: index of the LCL
         top_index: index of the cloud top
         theta_type: choose which approach to follow for 

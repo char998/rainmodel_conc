@@ -106,12 +106,9 @@ def ground_precipitation_rate(R, Dc,vb, a):
 
     Parameters:
         R (float): Rainfall rate [kg/m^2/s]
-        mu (float): Gamma shape parameter
-        Lambda (float): Gamma slope parameter [1/cm]
         Dc (float): Critical drop diameter [cm]
         a (float): Terminal velocity coefficient [1/s]
-        Vb (float): Updraft velocity [m/s]
-        rho_w (float): Water density [kg/m^3]
+        Vb (float): Updraft velocity (instead of cloud bottom in ES25 we use the average) [m/s]
 
     Returns:
         P (float): Precipitation rate at the ground [kg/m^2/s]

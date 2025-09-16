@@ -7,10 +7,11 @@ def entrainment_theta(entrainment_rate,theta_conserved,Z,theta_air,start_index):
     Calculate the potential temperature profile change due to entrainment
 
     Parameters:
-        entrainment_rate: entrainment rate       [1/m]
+        entrainment_rate: fractional entrainment rate     [1/m]
         theta_conserved: conserved parcel potential temperature [K]
         Z: height levels                          [m]
         theta_air: ambient air potential temperature profile  [K]
+        start_index: index of first height that is subject to enterainment
 
     Returns:
         theta_t: potential temperature profile with entrainment [K]
@@ -29,14 +30,11 @@ def entrainment_q_t(entrainment_rate, q_initial, Z, q_air,start_index):
     Calculate the total humidity profile change due to entrainment (only for reversible approaches)
 
     Parameters:
-        entrainment_rate: entrainment rate       [1/m]
+        entrainment_rate: fractional entrainment rate       [1/m]
         q_initial: initial/conserved parcel total humidity [kg/kg]
         Z: height levels                          [m]
         q_air: ambient air humidity profile  [kg/kg]
-        T_new: parcel temperature profile [K]
-        p_air: ambient air pressure profile [Pa]
-        start_index: starting index for enterainment
-
+        start_index: index of first height that is subject to enterainment
 
     Returns:
         q_t_new: parcel's total humidity profile after entrainment [kg/kg]
@@ -243,9 +241,10 @@ def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q
     p_s : Surface pressure [Pa].
     p_air : Environmental pressure profile [Pa].
     q_air : Environmental specific humidity profile [kg/kg].
-    Z : Height levels [m].
     start_index : Index where entrainment begins (LCL).
-    entrainment_rate : Entrainment rate [1/m].
+    Z : Height levels [m].
+    start_index : index of first height that is subject to enterainment
+    entrainment_rate : fractional entrainment rate [1/m].
     theta_type : choose which approach to follow for calculating potential temperature: 
                     - theta_e: pseudo-adiabatic equivalent potential temperature with constant latent heat
                     - theta_e_reversible: reversible equivalent potential temperature
@@ -279,15 +278,6 @@ def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q
           (b) the entrained total water content.
         * This uses `solve_entrained_parcel_state_iterative`
     - Apply safety checks for unphysical states (temperature bounds, large jumps).
-
-    Notes
-    -----
-    - Below the LCL, all parcel water is vapor (no condensation).
-    - Above the LCL, the balance between vapor and liquid is determined by
-      comparing total parcel water with the local saturation mixing ratio.
-    - Pseudo-adiabatic approaches assume precipitation efficiency = 100%,
-      so liquid condensate is immediately removed from the system.
-    - Reversible approaches conserve liquid water within the parcel.
     """
     q_t_parcel = w_sat(T_d, p_air[0])        # initial moisture content of parcel
     q_t_parcel_new = q_t_parcel * np.ones(len(Z))
