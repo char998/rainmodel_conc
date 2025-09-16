@@ -13,7 +13,7 @@ for Flood and Flash-Flood Forecasting 1.Formulation*, Georgakakos (1986)
     - **runs_and_tests_with_kalman.ipynb**: Tests the stochastic formulation of GB84, comparing different data assimilation windows.
 
 #### **2. ES25**
-- **Overview**: A more recent and significantly modified model developed as part of this thesis work. While loosely based on GB84 (especially regarding the state variables), it introduces notable changes in several physical processes.
+- **Overview**: A more recent and significantly modified model developed as part of this thesis work. While loosely based on GB84, it introduces notable changes in several physical processes.
 - **Improvements Over GB84**:
   - Enhanced **convection and cloud evolution** schemes.
   - Revised **water removal mechanisms** (e.g., precipitation processes).
