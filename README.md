@@ -19,7 +19,7 @@ for Flood and Flash-Flood Forecasting 1.Formulation*, Georgakakos (1986)
   - Revised **water removal mechanisms** (e.g., precipitation processes).
   - Updated **evaporation scheme**.
 - **Notebook**:
-  - **ES25_era_test.ipynb**: Demonstrates the ES25 model performance using ERA5 data for **July 2024**.
+  - **ES25_era_test.ipynb**: Notebook for testing the ES25 model using ERA5 data for **July 2024**.
 
 #### **3. data**
 - **Purpose**: Supports model testing and evaluation.
