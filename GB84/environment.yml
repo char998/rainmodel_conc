@@ -1,0 +1,18 @@
+name: GB84
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - scipy
+  - sympy
+  - jupyter
+  - notebook
+  - ipython
+  - pytz
+  - matplotlib
+  - pandas
+  - pip
+  - pip:
+    - ipywidgets>=7.6.0

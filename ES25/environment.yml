@@ -1,0 +1,20 @@
+name: ES25
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - scipy
+  - sympy
+  - ipywidgets
+  - jupyter
+  - notebook
+  - ipython
+  - pytz
+  - matplotlib
+  - pandas
+  - xarray
+  - pip
+  - pip:
+    - ipywidgets>=7.6.0
