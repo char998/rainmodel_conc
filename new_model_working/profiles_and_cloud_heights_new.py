@@ -158,26 +158,28 @@ def find_lfc_level(T_v_parcel,T_v_env,Z,lcl_index):
     """
 
     if T_v_parcel[lcl_index] > T_v_env[lcl_index]:
-        return "yes", lcl_index  # Case 1: Already buoyant at LCL
+        CIN = 0
+        return "yes", lcl_index, CIN  # Case 1: Already buoyant at LCL
 
     else:
         condition = T_v_parcel[lcl_index:] > T_v_env[lcl_index:]
+        CIN = 0
         if np.any(condition):
             LFC_index = np.argmax(condition) + lcl_index
 
             # --- CIN: from LCL to LFC where parcel is negatively buoyant ---
-            y_cin = g * (T_v_parcel[0:LFC_index] - T_v_env[0:LFC_index]) / T_v_parcel[0:LFC_index]
+            y_cin = g * (T_v_parcel[0:LFC_index] - T_v_env[0:LFC_index]) / T_v_env[0:LFC_index]
             y_cin = np.minimum(y_cin, 0)  # keep only negative buoyancy
             Z_cin = Z[0:LFC_index]
             CIN = np.abs(np.trapz(y_cin, Z_cin))
-
+            
             # --- Decision ---
-            if CIN <= 200 & lcl_index <= len(Z)-1:
-                return "yes", LFC_index  # Case 2: CIN is overcome
+            if (CIN <= 200) and (lcl_index <= len(Z)-1):
+                return "yes", LFC_index, CIN  # Case 2: CIN is overcome
             else:
-                return 'not reached', 0   # Case 3: CIN too strong
+                return 'not reached', 0, CIN   # Case 3: CIN too strong
         else:
-            return 'no LFC', 0  # Case 4: no crossing of parcel above environment
+            return 'no LFC', 0, CIN  # Case 4: no crossing of parcel above environment
         
 #Finding the top of the cloud
 def find_cloud_top_and_depth(LFC_index,Z,Z_b,p,T_v_parcel,T_v_env,temp_parcel):
