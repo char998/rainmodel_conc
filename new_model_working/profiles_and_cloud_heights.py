@@ -1,8 +1,9 @@
 import numpy as np
 from constants import cpd,g,R_dry,cl,Lv0
-from physics_equations import w_sat,theta_potential
+from physics_equations import w_sat,L,theta_e,theta_e_reversible,theta_l,theta_GB84
+#from sympy import Symbol, Eq,exp, lambdify
 from scipy.optimize import fsolve,brentq
-
+from entrainment import entrainment_theta, entrainment_q_t
 
 
 def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
@@ -12,8 +13,8 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
 
     Parameters:
         T_surf: surface temperature               [K]
-        p_surf: surface pressure                  [Pa]
         T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
         theta_type: choose which approach to follow for 
                     the conserved potential temperature: 
@@ -60,14 +61,31 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
     #temperature due to dry adiabatic lapse rate
     T_arr = T_surf*(p_air/p_surf)**0.286*np.ones(len(p_air))
     #T_arr[lcl_index] = T_s
-    
+
     #Saturated: follow theta_e, theta_l, or theta_e_reversible
     for i in range(lcl_index+1, len(p_air)):
         
-        
-        def f(T_new):
-            return theta_potential(T_new, p_air[i], p_air[0], q_t,theta_type) - theta_potential(T_s, p_s, p_air[0], q_t,theta_type)
+        if theta_type == 'theta_e':
+            def f(T_new):
+                return theta_e(T_new, p_air[i], p_air[0], q_t) - theta_e(T_s, p_s, p_air[0], q_t)
+            
+        elif theta_type == 'theta_l':
+            def f(T_new):
                 
+                return theta_l(T_new, p_air[i], p_air[0], q_t) - theta_l(T_s, p_s, p_air[0], q_t)
+            
+        elif theta_type == 'theta_e_reversible':
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], q_t) - theta_e_reversible(T_s, p_s, p_air[0], q_t)
+            
+        elif theta_type == 'GB84':
+            def f(T_new):
+                return theta_GB84(T_new, p_air[i], p_air[0], q_t) - theta_GB84(T_s, p_s, p_air[0], q_t)
+            
+        else:
+            raise ValueError(f"Unknown theta_type: {theta_type}")
+
+        
         T_parcel = fsolve(f, T_arr[i-1])[0]
 
         #warnings
@@ -87,15 +105,9 @@ def calculate_parcel_T_v_profile(T_d,p_air,T_arr,lcl_index,theta_type):
 
     Parameters:
         T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
         T_arr: temperature profile                [K]
-        lcl_index: index of the LCL
-        theta_type: choose which approach to follow for 
-                    the conserved potential temperature: 
-                    - theta_e: pseudo-adiabatic equivalent potential temperature with constant latent heat    
-                    - theta_e_reversible: reversible equivalent potential temperature
-                    - theta_l: liquid water potential temperature   
-                    - GB84: pseudo-adiabatic equivalent potential temperature from Georgakakos and Bras 1984
     
     Returns:
         T_v_moist: parcel virtual temperature profile    [K]
@@ -138,6 +150,139 @@ def calculate_parcel_T_v_profile(T_d,p_air,T_arr,lcl_index,theta_type):
     return T_v_moist,q_v
 
 
+def calculate_profiles_with_entrainment(T_s, T_d, T_air, T_parcel, p_s, p_air, q_air, Z, start_index, entrainment_rate, theta_type):
+    """
+    Calculate the moist parcel temperature profile and total humidity by considering entrainment
+
+    Parameters:
+        T_s: temperature at the LCL               [K]
+        T_d: dew point temperature in the surface  [K]
+        T_air: air temperature profile                [K]
+        T_parcel: parcel temperature profile      [K]
+        p_s: pressure at the LCL                  [Pa]
+        p_air: pressure levels                    [Pa]
+        q_air: environmental vapor specific humidity profile    [kg/kg]
+        Z: height levels                          [m]
+        lfc_index: index of the LFC
+        entrainment_rate: entrainment rate       [1/m]
+        theta_type: choose which approach to follow for 
+                    the conserved potential temperature: 
+                                                       - theta_e: pseudo-adiabatic equivalent potential temperature
+                                                       - theta_e_reversible: reversible equivalent potential temperature
+                                                       - theta_l: liquid water potential temperature    
+                                                       - GB84: GB84 equivalent potential temperature
+
+    Returns:    
+        T_parcel_new: parcel temperature profile with entrainment [K]
+        q_t_parcel_new: total specific humidity profile with entrainment [kg/kg]
+    """
+
+    q_t_parcel = w_sat(T_d,p_air[0])        #initial moisture content of parcel
+    q_t_parcel_new = q_t_parcel*np.ones(len(Z))
+
+    
+    # Pass the full arrays but specify the starting value correctly
+    q_above_start = entrainment_q_t(entrainment_rate, q_t_parcel, Z, q_air, T_parcel,p_air,start_index,theta_type)
+    q_t_parcel_new[start_index:] = q_above_start
+
+    T_parcel_new = T_parcel.copy()
+
+    if theta_type == 'theta_e':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(Lv0 * q_air / (cpd * T_air))
+        theta_conserved = theta_e(T_s, p_s, p_air[0], q_t_parcel)
+
+    elif theta_type == 'theta_l':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286     #no liquid water, θ_l = θ
+        theta_conserved = theta_l(T_s, p_s, p_air[0], q_t_parcel)
+   
+    elif theta_type == 'theta_e_reversible':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(L(T_air) * q_air / ((cpd + q_air * cl) * T_air))
+        theta_conserved = theta_e_reversible(T_s, p_s, p_air[0], q_t_parcel)
+
+    elif theta_type == 'GB84':
+        Theta_air = T_air * (p_air / p_air[0]) ** 0.286 * np.exp(L(T_air) * q_air / (cpd * T_air))
+        theta_conserved = theta_GB84(T_s, p_s, p_air[0], q_t_parcel)
+    
+    else:
+        raise ValueError(f"Unknown theta_type: {theta_type}")
+    
+    #potential temperature of parcel after entrainment (not conserved anymore)
+    #Theta_new = np.zeros(len(Z))
+    #Theta_new[lcl_index+1:] = entrainment_theta(
+        #entrainment_rate, theta_conserved, Z[lcl_index+1:], Theta_air[lcl_index+1:]
+    #)
+    #Theta_new[:lcl_index+1] = theta_conserved
+    Theta_new= entrainment_theta(
+        entrainment_rate, theta_conserved, Z, Theta_air,start_index)
+    for i in range(1, len(p_air)):
+
+
+        if theta_type == 'theta_e':
+            def f(T_new):
+                return theta_e(T_new, p_air[i], p_air[0], q_t_parcel_new[i]) - Theta_new[i]
+
+        elif theta_type == 'theta_l':
+            def f(T_new):
+                return theta_l(T_new, p_air[i], p_air[0], q_t_parcel_new[i]) - Theta_new[i]
+
+        elif theta_type == 'theta_e_reversible':
+
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], q_t_parcel_new[i]) - Theta_new[i]
+
+        elif theta_type == 'GB84':
+            def f(T_new):
+                return theta_e_reversible(T_new, p_air[i], p_air[0], T_d) - Theta_new[i]
+
+        T_parcel_new[i] = max(273.15-111,fsolve(f, T_parcel[i])[0])
+             #capping the value for numerical stability
+        #warnings
+        if not np.isfinite(T_parcel_new[i]) or T_parcel_new[i] > 400:
+            print(f"⚠️ Warning: Unphysical T_parcel = {T_parcel_new[i]:.2f} K at p = {p_air[i]:.2f} Pa")
+        if i > start_index and abs(T_parcel_new[i] - T_parcel_new[i-1]) > 20:
+            print(f"⚠️ Large temperature jump detected: ΔT = {T_parcel_new[i] - T_parcel_new[i-1]:.2f} K at p = {p_air[i]:.2f} Pa")
+
+    return T_parcel_new,q_t_parcel_new
+
+
+
+
+
+def calculate_humidity_profiles_with_entrainment(q_t_entr,p_air,T_arr,T_d,start_index):
+
+    """
+    Update the parcel humidity profiles after taking into account entrainment
+
+    Parameters:
+        T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
+        p_air: pressure levels                    [Pa]
+        T_arr: parcel temperature profile                [K]
+        q_t_entr: specific humidity profile with entrainment [kg/kg]
+
+    Returns:
+        q_l: liquid specific humidity profile       [kg/kg]
+        q_v: vapor specific humidity profile        [kg/kg]
+    """
+
+    #q_t = np.zeros(len(T_arr))
+    q_v = np.zeros(len(T_arr))
+    q_l = np.zeros(len(T_arr))
+    #q_t[0:lcl_index] = w_sat(T_d,p_surf)
+    #q_t[lcl_index:] = q_t_entr[lcl_index:]
+    q_v[0:start_index] =  w_sat(T_d,p_air[0])
+
+    #if theta_type == 'theta_l' or theta_type == 'theta_e_reversible':
+    q_v[start_index:] = np.minimum(q_t_entr[start_index:],w_sat(T_arr[start_index:],p_air[start_index:]))
+    q_l = np.maximum(0, q_t_entr - q_v)
+    #else:
+        #q_v[lcl_index:] = entrainment_q_pseudo(entrainment_rate,T_arr[lcl_index:],p_air[lcl_index:],T_d,p_air[0],Z[lcl_index:],q_air[lcl_index:])[0]
+        #q_l[lcl_index:] = entrainment_q_pseudo(entrainment_rate,T_arr[lcl_index:],p_air[lcl_index:],T_d,p_air[0],Z[lcl_index:],q_air[lcl_index:])[1]
+    #warnings
+    if np.any(q_v < 0):# or np.any(q_v > q_t):
+        print("⚠️ Warning: Unphysical values in vapor specific humidity (q_v) detected.")
+
+    return q_l,q_v
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # FINDING THE LFC

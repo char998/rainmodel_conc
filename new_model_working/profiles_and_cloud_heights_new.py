@@ -1,6 +1,7 @@
 import numpy as np
 from constants import cpd,g,R_dry,cl,Lv0
 from physics_equations import w_sat,theta_potential
+#from sympy import Symbol, Eq,exp, lambdify
 from scipy.optimize import fsolve,brentq
 
 
@@ -12,8 +13,8 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
 
     Parameters:
         T_surf: surface temperature               [K]
-        p_surf: surface pressure                  [Pa]
         T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
         theta_type: choose which approach to follow for 
                     the conserved potential temperature: 
@@ -59,7 +60,7 @@ def calculate_parcel_Temp_profile(T_surf,p_surf,T_d,p_air,theta_type):
 
     #temperature due to dry adiabatic lapse rate
     T_arr = T_surf*(p_air/p_surf)**0.286*np.ones(len(p_air))
-    #T_arr[lcl_index] = T_s
+    T_arr[lcl_index] = T_s
     
     #Saturated: follow theta_e, theta_l, or theta_e_reversible
     for i in range(lcl_index+1, len(p_air)):
@@ -87,15 +88,9 @@ def calculate_parcel_T_v_profile(T_d,p_air,T_arr,lcl_index,theta_type):
 
     Parameters:
         T_d: dew point temperature in the surface  [K]
+        p_surf: surface pressure                  [Pa]
         p_air: pressure levels                    [Pa]
         T_arr: temperature profile                [K]
-        lcl_index: index of the LCL
-        theta_type: choose which approach to follow for 
-                    the conserved potential temperature: 
-                    - theta_e: pseudo-adiabatic equivalent potential temperature with constant latent heat    
-                    - theta_e_reversible: reversible equivalent potential temperature
-                    - theta_l: liquid water potential temperature   
-                    - GB84: pseudo-adiabatic equivalent potential temperature from Georgakakos and Bras 1984
     
     Returns:
         T_v_moist: parcel virtual temperature profile    [K]
